@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    environment:
+      APP_ENV: local
+      APP_VERSION: compose
+    ports:
+      - "8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

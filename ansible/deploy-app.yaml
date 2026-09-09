@@ -1,0 +1,27 @@
+---
+- name: Déployer Factory API sur K3s
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    overlay: production
+    project_dir: "{{ playbook_dir }}/.."
+  tasks:
+    - name: Vérifier l'accès au cluster
+      ansible.builtin.command: kubectl get nodes
+      changed_when: false
+
+    - name: Appliquer l'overlay Kustomize
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -k
+          - "{{ project_dir }}/k8s/overlays/{{ overlay }}"
+      register: deployment
+      changed_when: "'configured' in deployment.stdout or 'created' in deployment.stdout"
+
+    - name: Attendre le déploiement
+      ansible.builtin.command: >-
+        kubectl -n factory rollout status deployment/factory-api --timeout=180s
+      changed_when: false

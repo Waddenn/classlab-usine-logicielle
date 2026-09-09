@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: factory-api
+  namespace: factory
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: factory.192.168.56.12.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: factory-api
+                port:
+                  name: http

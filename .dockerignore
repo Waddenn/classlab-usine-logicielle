@@ -1,0 +1,13 @@
+.git
+.gitlab
+.pytest_cache
+.ruff_cache
+.venv
+__pycache__
+*.pyc
+*.pptx
+docs
+k8s
+monitoring
+presentation
+tests

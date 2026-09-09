@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: factory-api-config
+  namespace: factory
+data:
+  APP_ENV: production

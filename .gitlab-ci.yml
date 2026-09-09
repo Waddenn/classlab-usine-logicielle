@@ -1,0 +1,126 @@
+stages:
+  - validate
+  - test
+  - package
+  - security
+  - deploy
+
+default:
+  interruptible: true
+  cache:
+    key: pip-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .cache/pip
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+
+lint:
+  stage: validate
+  image: python:3.12.13-slim
+  script:
+    - pip install --no-cache-dir -r requirements-dev.txt
+    - ruff check app tests
+    - ruff format --check app tests
+
+kubernetes:
+  stage: validate
+  image: alpine/k8s:1.32.3
+  script:
+    - kubectl kustomize k8s/overlays/staging >/tmp/staging.yaml
+    - kubectl kustomize k8s/overlays/production >/tmp/production.yaml
+    - test -s /tmp/staging.yaml
+    - test -s /tmp/production.yaml
+
+unit-tests:
+  stage: test
+  image: python:3.12.13-slim
+  script:
+    - pip install --no-cache-dir -r requirements-dev.txt
+    - python -m pytest --junitxml=report.xml --cov-report=xml:coverage.xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+build-image:
+  stage: package
+  image: docker:27.5.1-cli
+  services:
+    - name: docker:27.5.1-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build --pull --provenance=false --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" -t "$IMAGE_TAG" .
+    - docker push "$IMAGE_TAG"
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        docker tag "$IMAGE_TAG" "$CI_REGISTRY_IMAGE:latest"
+        docker push "$CI_REGISTRY_IMAGE:latest"
+      fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+
+scan-image:
+  stage: security
+  image:
+    name: aquasec/trivy:0.74.0
+    entrypoint: [""]
+  variables:
+    TRIVY_USERNAME: "$CI_REGISTRY_USER"
+    TRIVY_PASSWORD: "$CI_REGISTRY_PASSWORD"
+    TRIVY_AUTH_URL: "$CI_REGISTRY"
+    TRIVY_NO_PROGRESS: "true"
+  script:
+    - trivy image --sbom-sources="" --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "$IMAGE_TAG"
+    - trivy image --sbom-sources="" --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_TAG"
+  artifacts:
+    when: always
+    reports:
+      container_scanning: gl-container-scanning-report.json
+  needs: ["build-image"]
+
+.deploy:
+  stage: deploy
+  image: alpine/k8s:1.32.3
+  resource_group: "$DEPLOY_ENVIRONMENT"
+  script:
+    - kubectl config use-context "$KUBE_CONTEXT"
+    - >-
+      kubectl kustomize "k8s/overlays/$DEPLOY_ENVIRONMENT"
+      | sed -e "s|factory-api:latest|$IMAGE_TAG|g"
+      -e "s|value: latest|value: $CI_COMMIT_SHA|g"
+      | kubectl apply -f -
+    - kubectl -n factory rollout status deployment/factory-api --timeout=180s
+    - kubectl -n factory get deployment,pod,service,ingress
+  needs: ["scan-image"]
+
+deploy-staging:
+  extends: .deploy
+  variables:
+    DEPLOY_ENVIRONMENT: staging
+  environment:
+    name: staging
+    url: http://factory-staging.192.168.56.12.nip.io
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+deploy-production:
+  extends: .deploy
+  variables:
+    DEPLOY_ENVIRONMENT: production
+  environment:
+    name: production
+    url: http://factory.192.168.56.12.nip.io
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
