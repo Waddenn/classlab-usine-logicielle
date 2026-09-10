@@ -1,14 +1,22 @@
 import os
 import time
 from collections.abc import Awaitable, Callable
+from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 APP_NAME = os.getenv("APP_NAME", "Factory API")
 APP_ENV = os.getenv("APP_ENV", "development")
 APP_VERSION = os.getenv("APP_VERSION", "dev")
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
+GRAFANA_URL = os.getenv("GRAFANA_URL", "http://grafana:3000")
+APP_STARTED = time.monotonic()
+STATIC_DIR = Path(__file__).parent / "static"
+INDEX_HTML = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
 
 REQUESTS = Counter(
     "factory_http_requests_total",
@@ -19,6 +27,10 @@ LATENCY = Histogram(
     "factory_http_request_duration_seconds",
     "Durée des requêtes HTTP",
     ("method", "path"),
+)
+DEMO_RUNS = Counter(
+    "factory_demo_runs_total",
+    "Nombre de démonstrations lancées depuis l'interface",
 )
 
 app = FastAPI(
@@ -45,19 +57,48 @@ async def observe_requests(
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def home() -> str:
-    return f"""<!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>{APP_NAME}</title><style>
-body{{font-family:system-ui;background:#081525;color:#eef6ff;display:grid;place-items:center;min-height:100vh;margin:0}}
-main{{max-width:720px;padding:3rem}}p{{color:#adc4d8;font-size:1.2rem}}code{{color:#4ee1a0}}
-</style></head><body><main><p>ClassLab · Usine logicielle</p><h1>{APP_NAME}</h1>
-<p>Déploiement <code>{APP_ENV}</code> · version <code>{APP_VERSION}</code></p>
-<p><a href="/docs" style="color:#58b9ff">Documentation de l'API</a></p></main></body></html>"""
+    return INDEX_HTML
 
 
 @app.get("/api/v1/info")
 def info() -> dict[str, str]:
     return {"name": APP_NAME, "environment": APP_ENV, "version": APP_VERSION}
+
+
+def _probe(url: str, path: str) -> str:
+    try:
+        with urlopen(f"{url}{path}", timeout=0.5) as response:  # noqa: S310
+            return "up" if response.status < 400 else "down"
+    except (OSError, URLError):
+        return "down"
+
+
+@app.get("/api/v1/demo/status")
+def demo_status() -> dict[str, object]:
+    return {
+        "environment": APP_ENV,
+        "version": APP_VERSION,
+        "uptime_seconds": round(time.monotonic() - APP_STARTED),
+        "services": {
+            "api": "up",
+            "prometheus": _probe(PROMETHEUS_URL, "/-/ready"),
+            "grafana": _probe(GRAFANA_URL, "/api/health"),
+        },
+    }
+
+
+@app.post("/api/v1/demo/run")
+def demo_run() -> dict[str, str]:
+    DEMO_RUNS.inc()
+    return {"status": "started", "mode": "local-simulation", "version": APP_VERSION}
+
+
+@app.get("/api/v1/demo/error", include_in_schema=False)
+def demo_error() -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={"status": "controlled-error", "detail": "Erreur volontaire de démonstration"},
+    )
 
 
 @app.get("/health/live", include_in_schema=False)

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>Factory API — Démonstration</title>
+  <style>
+    :root { --bg:#07111f; --panel:#0d1b2d; --line:#22354a; --text:#f0f7ff; --muted:#8ea6ba; --cyan:#35d7ff; --mint:#4ee1a0; --orange:#ff9f68; --red:#ff6178; }
+    * { box-sizing:border-box } html { scroll-behavior:smooth } body { margin:0; color:var(--text); background:radial-gradient(circle at 70% -10%,#17324f 0,transparent 34%),var(--bg); font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
+    body:before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.18; background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px); background-size:34px 34px; mask-image:linear-gradient(to bottom,#000,transparent 75%); }
+    a { color:inherit; text-decoration:none } button { font:inherit } .shell { width:min(1180px,calc(100% - 36px)); margin:auto; position:relative; }
+    nav { height:76px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
+    .brand { font-weight:850; letter-spacing:.12em } .brand span { color:var(--cyan) } .navlinks { display:flex; align-items:center; gap:22px; color:var(--muted); font-size:.9rem; }
+    .live { display:flex; align-items:center; gap:8px; color:var(--mint) } .dot { width:8px; height:8px; background:currentColor; border-radius:50%; box-shadow:0 0 14px currentColor; }
+    header { padding:84px 0 56px; display:grid; grid-template-columns:1.25fr .75fr; gap:56px; align-items:end; }
+    .eyebrow,.label { color:var(--cyan); text-transform:uppercase; letter-spacing:.16em; font-size:.73rem; font-weight:800; }
+    h1 { font-size:clamp(3rem,7vw,6.8rem); line-height:.91; letter-spacing:-.065em; margin:18px 0 25px; max-width:900px; }
+    .lead { color:var(--muted); max-width:650px; font-size:1.08rem; line-height:1.7; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:34px; } .btn { border:1px solid var(--line); border-radius:9px; padding:13px 18px; background:#101f32; color:var(--text); cursor:pointer; transition:.2s; font-weight:750; }
+    .btn:hover { transform:translateY(-2px); border-color:var(--cyan) } .btn.primary { color:#00121a; background:var(--cyan); border-color:var(--cyan); box-shadow:0 10px 35px #35d7ff22; }
+    .release { border-left:1px solid var(--line); padding-left:28px; } .release strong { display:block; font-family:ui-monospace,monospace; font-size:2rem; margin:9px 0; } .release p { color:var(--muted); margin:5px 0; }
+    .notice { display:flex; align-items:flex-start; gap:12px; color:#b7c7d6; background:#102033aa; border:1px solid var(--line); padding:14px 17px; border-radius:9px; font-size:.86rem; line-height:1.5; }
+    section { padding:44px 0 } .section-head { display:flex; align-items:end; justify-content:space-between; margin-bottom:22px; gap:20px; } h2 { margin:8px 0 0; font-size:clamp(1.7rem,3vw,2.6rem); letter-spacing:-.035em; } .section-head p { color:var(--muted); max-width:480px; }
+    .architecture { display:grid; grid-template-columns:repeat(5,1fr); gap:26px; border:1px solid var(--line); background:#0b1828cc; padding:26px; border-radius:13px; }
+    .arch { position:relative; min-height:105px; } .arch:not(:last-child):after { content:"→"; position:absolute; right:-20px; top:34px; color:#58728a; }
+    .icon { width:42px; height:42px; display:grid; place-items:center; background:#112841; border:1px solid #29445e; border-radius:10px; color:var(--cyan); font-family:ui-monospace; font-weight:900; }
+    .arch strong { display:block; margin:14px 0 4px; } .arch small { color:var(--muted); }
+    .workspace { display:grid; grid-template-columns:1.5fr 1fr; gap:18px; }
+    .panel { border:1px solid var(--line); background:linear-gradient(145deg,#0e1c2e,#0a1625); border-radius:13px; overflow:hidden; }
+    .panel-title { display:flex; justify-content:space-between; align-items:center; padding:15px 18px; border-bottom:1px solid var(--line); color:#c5d5e2; font-size:.82rem; font-weight:750; letter-spacing:.04em; }
+    .pipeline { padding:18px; display:grid; gap:10px; } .stage { display:grid; grid-template-columns:38px 1fr auto; align-items:center; gap:13px; padding:14px; border:1px solid #203449; border-radius:9px; transition:.28s; }
+    .stage .num { font-family:ui-monospace; color:#5d7890; } .stage b { display:block; } .stage small { color:var(--muted); } .state { font-size:.72rem; color:#60798d; text-transform:uppercase; letter-spacing:.1em; }
+    .stage.running { border-color:var(--cyan); background:#113047; box-shadow:inset 3px 0 var(--cyan); } .stage.running .state { color:var(--cyan); } .stage.done { border-color:#2b624e; background:#0d2a25; } .stage.done .num,.stage.done .state { color:var(--mint); }
+    .console { background:#06101c; min-height:428px; padding:18px; font:13px/1.75 ui-monospace,SFMono-Regular,monospace; color:#95abc0; overflow:auto; } .log-line { animation:appear .25s ease; } .log-time { color:#46657e; } .log-ok { color:var(--mint); } .log-info { color:var(--cyan); } .log-warn { color:var(--orange); }
+    @keyframes appear { from { opacity:0; transform:translateY(5px) } }
+    .status-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:18px; } .service { padding:18px; border:1px solid var(--line); border-radius:10px; background:#0d1b2d; }
+    .service-top { display:flex; justify-content:space-between; } .service p { margin:8px 0 0; color:var(--muted); font-size:.85rem; } .badge { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; } .badge.up { color:var(--mint); } .badge.down { color:var(--red); }
+    .demo-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; } footer { color:#607990; font-size:.8rem; padding:55px 0 35px; display:flex; justify-content:space-between; border-top:1px solid var(--line); margin-top:38px; }
+    @media (max-width:800px) { header,.workspace { grid-template-columns:1fr } header { padding-top:52px } .release { border-left:0; border-top:1px solid var(--line); padding:22px 0 0 } .architecture { grid-template-columns:1fr 1fr } .arch:after { display:none } .status-grid { grid-template-columns:1fr } .navlinks a { display:none } }
+    @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; animation:none!important; transition:none!important } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav><div class="brand">FACTORY<span>//</span>LAB</div><div class="navlinks"><span class="live"><i class="dot"></i> système local</span><a href="/docs">API Docs</a><a href="http://localhost:9090" target="_blank">Prometheus</a><a href="http://localhost:3000/d/factory-api/factory-api?orgId=1" target="_blank">Grafana</a></div></nav>
+    <header>
+      <div><div class="eyebrow">Usine logicielle · Démonstrateur</div><h1>Du commit à la production, sous vos yeux.</h1><p class="lead">Explorez une chaîne DevSecOps complète : qualité, conteneurisation, sécurité, déploiement Kubernetes et observabilité.</p><div class="actions"><button class="btn primary" id="run">▶ Lancer la démonstration</button><a class="btn" href="#pipeline">Voir la chaîne</a></div></div>
+      <div class="release"><div class="label">Release active</div><strong id="version">chargement…</strong><p>environnement <span id="environment">—</span></p><p>disponible depuis <span id="uptime">—</span></p></div>
+    </header>
+    <div class="notice"><span>◆</span><span><b>Mode pédagogique.</b> L'animation simule localement l'enchaînement des jobs. Elle génère toutefois de vraies requêtes et lit l'état réel des services. Le pipeline GitLab exécutable est défini dans <code>.gitlab-ci.yml</code>.</span></div>
+
+    <section><div class="section-head"><div><div class="label">Architecture</div><h2>Une livraison, cinq briques.</h2></div><p>Chaque changement traverse une chaîne reproductible, contrôlée et observable.</p></div>
+      <div class="architecture"><div class="arch"><div class="icon">GL</div><strong>GitLab</strong><small>Source & pipeline</small></div><div class="arch"><div class="icon">CI</div><strong>Qualité</strong><small>Tests & couverture</small></div><div class="arch"><div class="icon">IMG</div><strong>Registry</strong><small>Image immuable</small></div><div class="arch"><div class="icon">K3S</div><strong>Kubernetes</strong><small>Déploiement GitOps</small></div><div class="arch"><div class="icon">OBS</div><strong>Observabilité</strong><small>Prometheus & Grafana</small></div></div>
+    </section>
+
+    <section id="pipeline"><div class="section-head"><div><div class="label">Console de démonstration</div><h2>Suivez la release en direct.</h2></div><p>La démo dure environ dix secondes et produit du trafic visible dans les métriques.</p></div>
+      <div class="workspace"><div class="panel"><div class="panel-title"><span>PIPELINE / LOCAL-DEMO</span><span id="pipelineState">EN ATTENTE</span></div><div class="pipeline" id="stages">
+        <div class="stage" data-stage><span class="num">01</span><div><b>Commit</b><small>Métadonnées de release</small></div><span class="state">attente</span></div>
+        <div class="stage" data-stage><span class="num">02</span><div><b>Tests</b><small>API & sondes de santé</small></div><span class="state">attente</span></div>
+        <div class="stage" data-stage><span class="num">03</span><div><b>Image</b><small>Artefact versionné</small></div><span class="state">attente</span></div>
+        <div class="stage" data-stage><span class="num">04</span><div><b>Scan sécurité</b><small>Politique HIGH / CRITICAL</small></div><span class="state">attente</span></div>
+        <div class="stage" data-stage><span class="num">05</span><div><b>Déploiement</b><small>Trafic applicatif réel</small></div><span class="state">attente</span></div>
+        <div class="stage" data-stage><span class="num">06</span><div><b>Observabilité</b><small>État des services</small></div><span class="state">attente</span></div>
+      </div></div><div class="panel"><div class="panel-title"><span>FACTORY OUTPUT</span><span>LIVE</span></div><div class="console" id="console" aria-live="polite"></div></div></div>
+
+      <div class="status-grid"><div class="service"><div class="service-top"><b>Factory API</b><span class="badge" id="apiStatus">—</span></div><p>Application & métriques</p></div><div class="service"><div class="service-top"><b>Prometheus</b><span class="badge" id="prometheusStatus">—</span></div><p>Collecte et alertes</p></div><div class="service"><div class="service-top"><b>Grafana</b><span class="badge" id="grafanaStatus">—</span></div><p>Dashboard provisionné</p></div></div>
+      <div class="demo-actions"><button class="btn" id="traffic">Générer 30 requêtes</button><button class="btn" id="error">Injecter une erreur 503 contrôlée</button><button class="btn" id="refresh">Actualiser les services</button></div>
+    </section>
+    <footer><span>ClassLab · Usine logicielle</span><span>FastAPI / Docker / GitLab CI / K3s</span></footer>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id), wait = (ms) => new Promise(r => setTimeout(r, ms));
+    const log = (message, type='info') => { const row=document.createElement('div'); row.className='log-line'; row.innerHTML=`<span class="log-time">${new Date().toLocaleTimeString('fr-FR')}</span> <span class="log-${type}">${message}</span>`; $('console').append(row); $('console').scrollTop=$('console').scrollHeight; };
+    const request = async (url, options) => { const r=await fetch(url, options); if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); };
+    const setBadge = (id, state) => { const el=$(id); el.textContent=state==='up'?'● EN LIGNE':'● INDISPONIBLE'; el.className=`badge ${state}`; };
+    async function refreshStatus() { try { const s=await request('/api/v1/demo/status'); $('version').textContent=s.version; $('environment').textContent=s.environment; $('uptime').textContent=`${s.uptime_seconds}s`; Object.entries(s.services).forEach(([k,v])=>setBadge(`${k}Status`,v)); return s; } catch(e) { log(`État inaccessible — ${e.message}`,'warn'); } }
+    async function generateTraffic(silent=false) { await Promise.all(Array.from({length:30},()=>fetch('/api/v1/info'))); if(!silent) log('30 requêtes réelles envoyées vers /api/v1/info','ok'); }
+    async function runDemo() { const button=$('run'), stages=[...document.querySelectorAll('[data-stage]')]; if(button.disabled)return; button.disabled=true; $('console').replaceChildren(); stages.forEach(s=>{s.className='stage';s.querySelector('.state').textContent='attente'}); $('pipelineState').textContent='EN COURS'; await fetch('/api/v1/demo/run',{method:'POST'});
+      const jobs=[async()=>{const i=await request('/api/v1/info');log(`commit → release ${i.version} / ${i.environment}`)},async()=>{await Promise.all([request('/health/live'),request('/health/ready')]);log('tests → liveness + readiness validées','ok')},async()=>log(`image → tag immuable ${$('version').textContent}`),async()=>log('scan → politique HIGH / CRITICAL vérifiée par le pipeline','ok'),async()=>{await generateTraffic(true);log('deploy → 30 requêtes réelles servies','ok')},async()=>{const s=await refreshStatus();log(`observe → API ${s.services.api}, Prometheus ${s.services.prometheus}, Grafana ${s.services.grafana}`,'ok')}];
+      for(let i=0;i<stages.length;i++){const stage=stages[i],state=stage.querySelector('.state');stage.classList.add('running');state.textContent='en cours';log(`job 0${i+1} démarré…`);await wait(850);try{await jobs[i]();stage.classList.remove('running');stage.classList.add('done');state.textContent='validé'}catch(e){log(`job en erreur — ${e.message}`,'warn');stage.classList.remove('running');state.textContent='erreur';break}await wait(300)} $('pipelineState').textContent='TERMINÉ'; log('release terminée — ouvrez Grafana pour observer le trafic','ok'); button.disabled=false; }
+    $('run').addEventListener('click',runDemo); $('traffic').addEventListener('click',()=>generateTraffic()); $('refresh').addEventListener('click',()=>refreshStatus().then(()=>log('État des services actualisé','ok'))); $('error').addEventListener('click',async()=>{const r=await fetch('/api/v1/demo/error');log(`Erreur volontaire reçue → HTTP ${r.status}`,'warn')});
+    log('Console prête. Lancez la démonstration.'); refreshStatus(); setInterval(refreshStatus,15000);
+  </script>
+</body>
+</html>

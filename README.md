@@ -115,7 +115,16 @@ Les variables `CI_REGISTRY_*` et `CI_COMMIT_SHA` sont fournies automatiquement p
 
 ## Démonstration
 
-Le déroulé chronométré se trouve dans [docs/demo.md](docs/demo.md). Une fois le déploiement terminé :
+La page <http://localhost:8000> propose maintenant une démonstration visuelle et interactive :
+
+- animation des étapes commit, tests, image, scan, déploiement et observabilité ;
+- génération de trafic réel vers l'API pour alimenter Prometheus et Grafana ;
+- contrôle en direct de l'état de l'API, de Prometheus et de Grafana ;
+- injection optionnelle d'une erreur HTTP 503 contrôlée pour illustrer la supervision.
+
+L'animation est une simulation locale pédagogique. Le pipeline exécutable reste celui de
+`.gitlab-ci.yml`. Le déroulé chronométré se trouve dans [docs/demo.md](docs/demo.md). Une fois le
+déploiement K3s terminé :
 
 ```bash
 ./scripts/demo.sh
