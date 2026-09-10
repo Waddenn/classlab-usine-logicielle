@@ -22,6 +22,15 @@ make install
 make validate
 ```
 
+La pile locale complète se lance avec :
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+L'application répond sur le port 8000, Prometheus sur 9090 et Grafana sur 3000. Les identifiants Grafana de démonstration sont `admin` / `classlab`, sauf surcharge dans `.env`.
+
 ## 3. Tester l'image
 
 ```bash

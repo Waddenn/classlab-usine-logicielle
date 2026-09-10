@@ -32,6 +32,10 @@ kubernetes:
     - kubectl kustomize k8s/overlays/production >/tmp/production.yaml
     - test -s /tmp/staging.yaml
     - test -s /tmp/production.yaml
+    - grep -q '^  name: factory-staging$' /tmp/staging.yaml
+    - grep -q '^  namespace: factory-staging$' /tmp/staging.yaml
+    - grep -q '^  name: factory-api-staging$' /tmp/staging.yaml
+    - grep -q '^  namespace: factory$' /tmp/production.yaml
 
 unit-tests:
   stage: test
@@ -81,13 +85,15 @@ scan-image:
     TRIVY_AUTH_URL: "$CI_REGISTRY"
     TRIVY_NO_PROGRESS: "true"
   script:
-    - trivy image --sbom-sources="" --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "$IMAGE_TAG"
     - trivy image --sbom-sources="" --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_TAG"
+    - trivy image --sbom-sources="" --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "$IMAGE_TAG"
   artifacts:
     when: always
     reports:
       container_scanning: gl-container-scanning-report.json
   needs: ["build-image"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
 
 .deploy:
   stage: deploy
@@ -100,14 +106,16 @@ scan-image:
       | sed -e "s|factory-api:latest|$IMAGE_TAG|g"
       -e "s|value: latest|value: $CI_COMMIT_SHA|g"
       | kubectl apply -f -
-    - kubectl -n factory rollout status deployment/factory-api --timeout=180s
-    - kubectl -n factory get deployment,pod,service,ingress
+    - kubectl -n "$KUBE_NAMESPACE" rollout status "deployment/$KUBE_DEPLOYMENT" --timeout=180s
+    - kubectl -n "$KUBE_NAMESPACE" get deployment,pod,service,ingress
   needs: ["scan-image"]
 
 deploy-staging:
   extends: .deploy
   variables:
     DEPLOY_ENVIRONMENT: staging
+    KUBE_NAMESPACE: factory-staging
+    KUBE_DEPLOYMENT: factory-api-staging
   environment:
     name: staging
     url: http://factory-staging.192.168.56.12.nip.io
@@ -118,6 +126,8 @@ deploy-production:
   extends: .deploy
   variables:
     DEPLOY_ENVIRONMENT: production
+    KUBE_NAMESPACE: factory
+    KUBE_DEPLOYMENT: factory-api
   environment:
     name: production
     url: http://factory.192.168.56.12.nip.io

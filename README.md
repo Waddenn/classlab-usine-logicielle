@@ -27,7 +27,7 @@ flowchart LR
   scan -->|main + validation manuelle| production[Production K3s]
   prometheus[Prometheus] -->|scrape /metrics| production
   grafana[Grafana] -->|PromQL| prometheus
-  alertmanager[Alertmanager] -->|alertes| prometheus
+  prometheus -->|alertes| alertmanager[Alertmanager]
 ```
 
 Le détail et les décisions sont dans [docs/architecture.md](docs/architecture.md).
@@ -45,12 +45,26 @@ make run
 
 Puis ouvrir <http://127.0.0.1:8000> et <http://127.0.0.1:8000/docs>.
 
-### Avec Docker
+### Avec Docker Compose
 
 ```bash
 docker compose up --build -d
-./scripts/smoke-test.sh http://127.0.0.1:8000
-docker compose down
+make stack-test
+```
+
+Cette commande lance la pile locale complète :
+
+| Service | Adresse | Accès |
+|---|---|---|
+| Factory API | <http://localhost:8000> | public |
+| Documentation OpenAPI | <http://localhost:8000/docs> | public |
+| Prometheus | <http://localhost:9090> | public dans le lab |
+| Grafana | <http://localhost:3000> | `admin` / `classlab` par défaut |
+
+Le dashboard « Factory API » et la source Prometheus sont provisionnés automatiquement. Utiliser un fichier `.env` dérivé de `.env.example` pour changer les identifiants Grafana. Pour arrêter la pile sans supprimer les données :
+
+```bash
+docker compose stop
 ```
 
 ## Déploiement K3s
@@ -66,11 +80,11 @@ kubectl -n factory get deployment,pods,service,ingress,hpa
 
 Sans registre, charger d'abord une image locale sur les nœuds K3s ou remplacer `factory-api:latest` dans le manifeste. Dans GitLab CI, le pipeline remplace automatiquement ce nom par l'image immuable associée au SHA du commit.
 
-L'application de production répond sur <http://factory.192.168.56.12.nip.io>. L'overlay de staging utilise <http://factory-staging.192.168.56.12.nip.io>.
+L'application de production répond sur <http://factory.192.168.56.12.nip.io> dans le namespace `factory`. L'overlay de staging utilise <http://factory-staging.192.168.56.12.nip.io> dans le namespace indépendant `factory-staging`.
 
 ## Supervision
 
-Installer les charts compatibles avec les versions proposées dans ClassLab :
+Le démarrage Docker Compose précédent fournit déjà Prometheus et Grafana pour la démonstration locale. Pour la cible K3s, installer les charts compatibles avec les versions proposées dans ClassLab :
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts

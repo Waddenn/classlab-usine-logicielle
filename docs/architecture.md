@@ -40,11 +40,11 @@ sequenceDiagram
 
 **Image immuable par SHA.** Un tag de commit permet de retrouver exactement le code livré. `latest` reste un alias pratique, mais le déploiement CI utilise le SHA.
 
-**Kustomize.** La base centralise la configuration commune. Les overlays ne décrivent que les écarts entre staging et production, ce qui réduit la duplication.
+**Kustomize.** La base centralise la configuration commune. Les overlays ne décrivent que les écarts entre staging et production. Le staging utilise `factory-staging` et la production `factory`, ce qui empêche un déploiement de remplacer l'autre.
 
 **GitLab Agent.** Le cluster initie une connexion sortante vers GitLab. Le pipeline sélectionne un contexte autorisé sans enregistrer un kubeconfig administrateur dans les variables CI.
 
-**Déploiement progressif.** Deux replicas, `maxUnavailable: 0`, probes et délai du job empêchent GitLab d'annoncer un succès avant la disponibilité du nouveau ReplicaSet.
+**Déploiement progressif.** La production utilise deux replicas et peut monter à cinq. Le staging démarre avec un replica et peut monter à trois. `maxUnavailable: 0`, les probes et l'attente du rollout empêchent GitLab d'annoncer un succès avant la disponibilité du nouveau ReplicaSet.
 
 **Défense en profondeur.** Le conteneur tourne avec l'UID 10001, sans privilèges, sans capabilities, avec un système de fichiers en lecture seule et sans jeton Kubernetes automatique. Les ressources sont bornées et le trafic entrant est limité aux namespaces Traefik et monitoring.
 

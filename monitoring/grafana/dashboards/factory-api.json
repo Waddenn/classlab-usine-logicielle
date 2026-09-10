@@ -1,0 +1,48 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Requêtes par seconde",
+      "id": 1,
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(factory_http_requests_total[5m]))", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "Taux d'erreurs 5xx",
+      "id": 2,
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percentunit"}},
+      "targets": [{"expr": "sum(rate(factory_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(factory_http_requests_total[5m])), 0.001)", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latence p95",
+      "id": 3,
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(factory_http_request_duration_seconds_bucket[5m])))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Trafic HTTP par statut",
+      "id": 4,
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (status) (rate(factory_http_requests_total[5m]))", "legendFormat": "HTTP {{status}}", "refId": "A"}]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 42,
+  "tags": ["classlab", "factory-api"],
+  "templating": {"list": []},
+  "time": {"from": "now-15m", "to": "now"},
+  "title": "Factory API",
+  "uid": "factory-api",
+  "version": 1
+}

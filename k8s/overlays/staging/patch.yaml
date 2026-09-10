@@ -14,6 +14,15 @@ metadata:
 data:
   APP_ENV: staging
 ---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: factory-api
+  namespace: factory
+spec:
+  minReplicas: 1
+  maxReplicas: 3
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

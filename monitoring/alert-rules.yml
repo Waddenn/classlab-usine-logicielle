@@ -1,0 +1,22 @@
+groups:
+  - name: factory-api
+    rules:
+      - alert: FactoryApiDown
+        expr: up{job="factory-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Factory API ne répond plus
+
+      - alert: FactoryApiHighErrorRate
+        expr: >-
+          sum(rate(factory_http_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(factory_http_requests_total[5m])), 0.001)
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Plus de 5 % d'erreurs HTTP pendant 5 minutes
