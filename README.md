@@ -7,7 +7,7 @@ Ce dépôt livre une chaîne DevOps complète, du commit Git au service supervis
 - API FastAPI et page web, documentation OpenAPI sur `/docs` ;
 - tests automatisés avec seuil de couverture de 90 % ;
 - image Docker multi-stage, utilisateur non privilégié et système de fichiers en lecture seule ;
-- pipeline GitLab CI : validation, tests, build, publication, scan Trivy et déploiement ;
+- pipelines GitLab CI et GitHub Actions : validation, tests, build, publication et scan Trivy ;
 - overlays Kubernetes `staging` et `production` avec Kustomize ;
 - probes, rolling update sans indisponibilité, limites de ressources, HPA et NetworkPolicy ;
 - métriques Prometheus, règles d'alerte et dashboard Grafana provisionné ;
@@ -113,6 +113,18 @@ Le dashboard « Factory API » présente le débit, le taux d'erreurs, la latenc
 
 Les variables `CI_REGISTRY_*` et `CI_COMMIT_SHA` sont fournies automatiquement par GitLab. Aucun kubeconfig ni mot de passe n'est stocké dans Git.
 
+## Configuration GitHub
+
+Le workflow `.github/workflows/ci-cd.yml` exécute automatiquement le lint, les tests avec un seuil
+de couverture de 90 %, la validation Kustomize, la construction de l'image et son scan Trivy. Sur
+`main` et `develop`, l'image validée est publiée dans GitHub Container Registry avec le SHA du
+commit ; `main` publie également le tag `latest`.
+
+Le token éphémère `GITHUB_TOKEN` est utilisé par le workflow : aucun secret personnel n'est stocké
+dans le dépôt. Le cluster K3s local n'étant pas joignable depuis un runner GitHub hébergé, son
+déploiement reste exécuté localement avec `kubectl apply -k k8s/overlays/production` ou depuis un
+runner auto-hébergé explicitement sécurisé.
+
 ## Démonstration
 
 La page <http://localhost:8000> propose maintenant une démonstration visuelle et interactive :
@@ -136,7 +148,7 @@ déploiement K3s terminé :
 - schéma d'architecture : [docs/architecture.md](docs/architecture.md) ;
 - support de présentation : `presentation/Usine_Logicielle_ClassLab.pptx` ;
 - notes orales : [presentation/notes-orales.md](presentation/notes-orales.md) ;
-- dépôt Git : ce dossier est prêt à être publié dans votre espace GitLab.
+- dépôt Git : ce dossier est prêt pour GitLab CI et GitHub Actions.
 
 ## Limites
 
